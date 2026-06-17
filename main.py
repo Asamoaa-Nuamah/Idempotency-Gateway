@@ -1,5 +1,11 @@
+# Stores previously processed requests
+# Key   = Idempotency-Key
+# Value = Saved response information
+processed_requests = {}
+
 # Import FastAPI framework
 from fastapi import FastAPI, Header, HTTPException
+from fastapi.responses import JSONResponse
 
 # Used to simulate payment processing delay
 import time
@@ -31,30 +37,60 @@ def home():
 @app.post("/process-payment", status_code=201)
 def process_payment(
     payment: PaymentRequest,
-    idempotency_key: str = Header(None)
+    idempotency_key: str = Header(
+        None,
+        alias="Idempotency-Key"
+    )
 ):
     """
-    Process a payment request.
+    Process payment exactly once.
 
-    Parameters:
-    - payment: JSON request body
-    - idempotency_key: value from request header
-
-    Returns:
-    - Payment status message
+    If the same Idempotency-Key is received again,
+    return the previously saved response instead
+    of processing the payment a second time.
     """
 
-    # Ensure the header is present
+    # Ensure header exists
     if not idempotency_key:
         raise HTTPException(
             status_code=400,
             detail="Idempotency-Key header is required"
         )
 
+    # Check whether this request was processed before
+    if idempotency_key in processed_requests:
+
+        saved_data = processed_requests[idempotency_key]
+
+        # Return cached response immediately
+        return JSONResponse(
+            status_code=saved_data["status_code"],
+            content=saved_data["body"],
+            headers={
+                "X-Cache-Hit": "true"
+            }
+        )
+
     # Simulate payment processing
     time.sleep(2)
 
-    # Return success response
-    return {
+    # Create response
+    response_body = {
         "message": f"Charged {payment.amount} {payment.currency}"
     }
+
+    # Save response for future duplicate requests
+    processed_requests[idempotency_key] = {
+        "status_code": 201,
+        "body": response_body
+    }
+
+    # First request should indicate it was not cached
+    return JSONResponse(
+        status_code=201,
+        content=response_body,
+        headers={
+            "X-Cache-Hit": "false"
+        }
+    )
+
