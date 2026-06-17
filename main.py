@@ -1,7 +1,14 @@
 # Stores previously processed requests
 # Key   = Idempotency-Key
 # Value = Saved response information
+
+from threading import Event
+
+# Stores completed requests
 processed_requests = {}
+
+# Stores requests currently being processed
+in_flight_requests = {}
 
 # Import FastAPI framework
 from fastapi import FastAPI, Header, HTTPException
@@ -60,20 +67,6 @@ def process_payment(
     # Convert incoming request into a dictionary
     current_request = payment.model_dump()
 
-    # # Check whether this request was processed before
-    # if idempotency_key in processed_requests:
-
-    #     saved_data = processed_requests[idempotency_key]
-
-    #     # Return cached response immediately
-    #     return JSONResponse(
-    #         status_code=saved_data["status_code"],
-    #         content=saved_data["body"],
-    #         headers={
-    #             "X-Cache-Hit": "true"
-    #         }
-    #     )
-
     if idempotency_key in processed_requests:
 
        saved_data = processed_requests[idempotency_key]
@@ -85,6 +78,7 @@ def process_payment(
             status_code=409,
             detail="Idempotency key already used for a different request body."
         )
+       
 
     # Request matches original request
        return JSONResponse(
@@ -95,6 +89,30 @@ def process_payment(
         }
     )
 
+#Bonus story
+# Another request with this key is currently processing
+    if idempotency_key in in_flight_requests:
+
+        event = in_flight_requests[idempotency_key]
+
+        # Wait until first request finishes
+        event.wait()
+
+        saved_data = processed_requests[idempotency_key]
+
+        return JSONResponse(
+            status_code=saved_data["status_code"],
+            content=saved_data["body"],
+            headers={
+                "X-Cache-Hit": "true"
+            }
+        )
+
+    # MARK REQUEST AS IN PROGRESS
+    event = Event()
+    in_flight_requests[idempotency_key] = event
+
+
     # Simulate payment processing
     time.sleep(2)
 
@@ -103,18 +121,18 @@ def process_payment(
         "message": f"Charged {payment.amount} {payment.currency}"
     }
 
-    # Save response for future duplicate requests
-    # processed_requests[idempotency_key] = {
-    #     "status_code": 201,
-    #     "body": response_body
-    # }
-
     processed_requests[idempotency_key] = {
     "request": current_request,
     "status_code": 201,
     "body": response_body
 }
 
+    # Notify waiting requests that processing is complete
+    event.set()
+
+    # Remove from active processing list
+    del in_flight_requests[idempotency_key]
+    
     # First request should indicate it was not cached
     return JSONResponse(
         status_code=201,
