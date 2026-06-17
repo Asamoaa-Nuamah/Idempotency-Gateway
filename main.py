@@ -56,20 +56,44 @@ def process_payment(
             status_code=400,
             detail="Idempotency-Key header is required"
         )
+    
+    # Convert incoming request into a dictionary
+    current_request = payment.model_dump()
 
-    # Check whether this request was processed before
+    # # Check whether this request was processed before
+    # if idempotency_key in processed_requests:
+
+    #     saved_data = processed_requests[idempotency_key]
+
+    #     # Return cached response immediately
+    #     return JSONResponse(
+    #         status_code=saved_data["status_code"],
+    #         content=saved_data["body"],
+    #         headers={
+    #             "X-Cache-Hit": "true"
+    #         }
+    #     )
+
     if idempotency_key in processed_requests:
 
-        saved_data = processed_requests[idempotency_key]
+       saved_data = processed_requests[idempotency_key]
 
-        # Return cached response immediately
-        return JSONResponse(
-            status_code=saved_data["status_code"],
-            content=saved_data["body"],
-            headers={
-                "X-Cache-Hit": "true"
-            }
+    # Compare current request with original request
+       if current_request != saved_data["request"]:
+
+          raise HTTPException(
+            status_code=409,
+            detail="Idempotency key already used for a different request body."
         )
+
+    # Request matches original request
+       return JSONResponse(
+        status_code=saved_data["status_code"],
+        content=saved_data["body"],
+        headers={
+            "X-Cache-Hit": "true"
+        }
+    )
 
     # Simulate payment processing
     time.sleep(2)
@@ -80,10 +104,16 @@ def process_payment(
     }
 
     # Save response for future duplicate requests
+    # processed_requests[idempotency_key] = {
+    #     "status_code": 201,
+    #     "body": response_body
+    # }
+
     processed_requests[idempotency_key] = {
-        "status_code": 201,
-        "body": response_body
-    }
+    "request": current_request,
+    "status_code": 201,
+    "body": response_body
+}
 
     # First request should indicate it was not cached
     return JSONResponse(
