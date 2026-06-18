@@ -54,7 +54,7 @@ Build a RESTful API that mimics a payment processing backend. It must check for 
 ### User Story 2: The Duplicate Attempt (Idempotency Logic)
 **As a** client system,  
 **I want to** safely retry a request if I don't hear back,  
-**So that** I don't accidentally double-charge the user.
+**So that** I don't accidentally double-charge the user..
 
 **Acceptance Criteria:**
 - [ ] If the client sends a second `POST` request with the **same** `Idempotency-Key` and payload:
