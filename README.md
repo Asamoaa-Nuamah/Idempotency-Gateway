@@ -4,6 +4,7 @@ A simple payment API that guarantees each request is processed only once by usin
 
 
 ## Logic Flow Diagram
+The following flowchart was created to model the idempotency workflow before implementation.
 
 ```mermaid
 flowchart TD
@@ -54,8 +55,8 @@ The service also handles concurrent duplicate requests by tracking in-flight pro
 ## Project Structure
 - `main.py`: FastAPI application and route definitions.
 - `models.py`: Request schema for payment validation.
-- `database.py`: SQLite persistence for idempotency records.
-- `services.py`: Business logic for idempotency enforcement and in-flight request coordination.
+- `database.py`: SQLite persistence layer for storing idempotency records.
+- `services.py`: Core payment processing, request replay, and concurrent request coordination logic.
 
 ## Setup and Run
 1. Clone the repository and change directory:
