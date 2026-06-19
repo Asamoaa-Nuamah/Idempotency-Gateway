@@ -33,8 +33,8 @@ class PaymentRequest(BaseModel):
     currency: str
 
 #homepage endpoint
-@app.get("/")
-def home():
+@app.get("/health", status_code=200)
+def health():
     return {
         "message": "FinSafe Payment API is running"
     }
