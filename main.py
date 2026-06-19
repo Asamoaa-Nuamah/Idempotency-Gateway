@@ -3,6 +3,7 @@ from fastapi import FastAPI, Header
 from models import PaymentRequest
 from services import process_payment_request
 
+# FastAPI application instance.
 app = FastAPI(
     title="FinSafe Payment API",
     description="Idempotency Layer for Payment Processing",
@@ -12,6 +13,7 @@ app = FastAPI(
 
 @app.get("/health", status_code=200)
 def health():
+    """Health-check endpoint to verify the service is running."""
     return {"message": "FinSafe Payment API is running"}
 
 
@@ -23,5 +25,6 @@ def process_payment(
         alias="Idempotency-Key",
     ),
 ):
+    """Route handler for processing payment requests."""
     return process_payment_request(payment, idempotency_key)
 
