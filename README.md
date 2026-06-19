@@ -2,6 +2,49 @@
 
 A simple payment API that guarantees each request is processed only once by using an `Idempotency-Key` header.
 
+
+## Logic Flow Diagram
+
+```mermaid
+flowchart TD
+
+A[Client sends POST /process-payment] --> B{Idempotency-Key Present?}
+
+B -->|No| C[Return 400 Bad Request]
+
+B -->|Yes| D[Convert Request Body to Dictionary]
+
+D --> E{Key Exists in Processed Requests?}
+
+E -->|Yes| F{Request Body Matches Original?}
+
+F -->|No| G[Return 409 Conflict]
+
+F -->|Yes| H[Return Cached Response]
+H --> I[X-Cache-Hit = true]
+
+E -->|No| J{Key Currently In Flight?}
+
+J -->|Yes| K[Wait for Original Request to Finish]
+K --> H
+
+J -->|No| L[Mark Request as In Flight]
+
+L --> M[Simulate Processing 2 Seconds]
+
+M --> N[Create Response]
+
+N --> O[Store Request and Response]
+
+O --> P[Signal Waiting Requests]
+
+P --> Q[Remove From In Flight List]
+
+Q --> R[Return Response]
+R --> S[X-Cache-Hit = false]
+```
+
+
 ## Project Summary
 This service implements a payment processing gateway with first-class idempotency support.
 It accepts payment requests with a unique `Idempotency-Key`, persists the request and response to SQLite, and ensures duplicate retries return the same saved result instead of re-processing the payment.
