@@ -172,6 +172,23 @@ Why it matters:
 - Real payment systems must preserve idempotency across restarts and deployments.
 - In-memory state alone is not enough for reliability in production.
 
+## Test Case Approach
+
+- **Test runner & tools:** Tests use `pytest` together with `fastapi.testclient.TestClient` to exercise the app at the HTTP layer.
+- **Isolation & fixtures:** An `in_memory_db` fixture monkeypatches `database.db` with an in-memory SQLite connection and creates the `idempotency_records` table. A `clear_state` fixture resets `services.in_flight_requests` and monkeypatches `time.sleep` to a no-op so tests run fast and deterministically. A `client` fixture yields a `TestClient(main.app)` for endpoint testing.
+- **Coverage highlights:**
+  - Health check (`test_health_endpoint`).
+  - Missing `Idempotency-Key` handling (`test_payment_requires_idempotency_key`).
+  - First-request behavior and cache-miss (`test_process_payment_creates_new_record_and_returns_cache_miss`).
+  - Duplicate same-payload replay (`test_duplicate_request_with_same_payload_replays_cached_response`).
+  - Duplicate different-payload conflict (`test_duplicate_request_with_different_payload_returns_conflict`).
+  - Direct service persistence verification (`test_persisted_record_matches_request_body`).
+- **Test file:** See `tests/test_payment_api.py` for implementation details and setup.
+- **Run tests:**
+  ```bash
+  pytest -q
+  ```
+
 ## Notes
 - The database file `idempotency_store.db` is created automatically.
 - This project is a simulation and can be extended to use Redis, PostgreSQL, or distributed locking in a production environment.
