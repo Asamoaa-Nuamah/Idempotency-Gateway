@@ -64,7 +64,7 @@ def process_payment_request(payment: PaymentRequest, idempotency_key: str):
     in_flight_requests[idempotency_key] = event
 
     # Simulate the external payment processing delay.
-    time.sleep(2)
+    time.sleep(10)
     response_body = {
         "message": f"Charged {payment.amount} {payment.currency}"
     }
